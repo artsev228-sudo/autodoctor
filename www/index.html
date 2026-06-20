@@ -344,7 +344,7 @@ a{color:inherit}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 1.1 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 1.2 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -792,23 +792,27 @@ function parseUDS(resp){
   }
   return out;
 }
-function scanOtherModules(groups){
+function scanOtherModules(groups, onStep){
   var seen={}, seq=Promise.resolve();
   PROBE_ADDRS.forEach(function(req){
     if(seen[req]) return; seen[req]=1;
     var rx=(parseInt(req,16)+8).toString(16).toUpperCase();
-    seq=seq.then(function(){ return queue("ATSH"+req,700); })
-           .then(function(){ return queue("ATCRA"+rx,500); })
-           .then(function(){ return queue("190208",2500); })
-           .then(function(r){
-             var h=cleanHex(r);
-             if(/59\s?02/.test(h)){ groups.push({m:modName(req), codes:parseUDS(r)}); return; }
-             if(/7F\s?19/.test(h)){ groups.push({m:modName(req), codes:[]}); return; } // блок есть, кодов не отдал
-             return queue("03",1800).then(function(r2){
-               var h2=cleanHex(r2);
-               if(/(^|\s)43(\s|$)/.test(h2)){ groups.push({m:modName(req), codes:parseDTCs(r2)}); }
-             });
-           });
+    seq=seq.then(function(){
+      if(ST.scanAbort) return;
+      return queue("ATSH"+req,600)
+        .then(function(){ return queue("ATCRA"+rx,500); })
+        .then(function(){ return queue("190208",1500); })
+        .then(function(r){
+          var h=cleanHex(r);
+          if(/59\s?02/.test(h)){ groups.push({m:modName(req), codes:parseUDS(r)}); return; }
+          if(/7F\s?19/.test(h)){ groups.push({m:modName(req), codes:[]}); return; }
+          return queue("03",1100).then(function(r2){
+            if(/(^|\s)43(\s|$)/.test(cleanHex(r2))){ groups.push({m:modName(req), codes:parseDTCs(r2)}); }
+          });
+        })
+        .then(function(){ if(onStep) onStep(modName(req)); })
+        .catch(function(){ if(onStep) onStep(modName(req)); });
+    });
   });
   return seq.then(function(){ return queue("ATCRA",400); })
             .then(function(){ return queue("ATAR",400); })
@@ -870,16 +874,18 @@ function resetLive(){ for(var k in ST.live) ST.live[k]=0; renderLive(); }
 
 function doScan(){
   if(!ST.connected){ toast("Сначала подключите адаптер"); switchTab("home"); pulseConn(); return; }
-  if(ST.busy) return;
-  ST.busy=true;
+  if(ST.busy){ ST.scanAbort=true; $("scanLbl").textContent="Стоп…"; $("scanDesc").innerHTML="Останавливаю сканирование…"; return; }
+  ST.busy=true; ST.scanAbort=false;
   $("scanIc").textContent="⏳"; $("scanIc").classList.add("spin");
   $("scanLbl").textContent="Сканирую…";
   $("scanTitle").textContent="Идёт диагностика…";
-  $("scanDesc").innerHTML="Опрашиваю блоки автомобиля<br>по очереди — это занимает до минуты";
+  $("scanDesc").innerHTML="Опрашиваю блоки по очереди…<br>Нажмите кнопку ещё раз, чтобы остановить";
   var finishGroups=function(groups){
     ST.groups=groups;
     var flat=[]; groups.forEach(function(g){ flat=flat.concat(g.codes); });
     ST.dtcs=flat; ST.busy=false;
+    var aborted=ST.scanAbort; ST.scanAbort=false;
+    if(!ST.demo && ST.connected) startLive();
     $("scanIc").textContent="🔍"; $("scanIc").classList.remove("spin");
     $("scanLbl").textContent="Сканировать";
     if(flat.length){
@@ -896,11 +902,16 @@ function doScan(){
   };
   if(ST.demo){ setTimeout(function(){ finishGroups(JSON.parse(JSON.stringify(DEMO_GROUPS))); }, 1600); }
   else {
+    stopLive();
     var groups=[];
-    queue("03",5000).then(function(resp){
-      groups.push({m:"Двигатель (ECM)", codes:parseDTCs(resp)});
-      return scanOtherModules(groups);
-    }).then(function(){ finishGroups(groups); });
+    var total=PROBE_ADDRS.length+1, done=0;
+    var prog=function(label){ done++; var p=Math.min(99,Math.round(done/total*100));
+      $("scanLbl").textContent=p+"%"; $("scanTitle").textContent="Сканирую… "+p+"%";
+      if(label) $("scanDesc").innerHTML="Проверяю: "+label+"<br>Нажмите кнопку, чтобы остановить"; };
+    queue("03",4000).then(function(resp){
+      groups.push({m:"Двигатель (ECM)", codes:parseDTCs(resp)}); prog("Двигатель");
+      return scanOtherModules(groups, prog);
+    }).then(function(){ finishGroups(groups); }).catch(function(){ finishGroups(groups); });
   }
 }
 function doClear(){
@@ -1266,7 +1277,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.1");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.2");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
