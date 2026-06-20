@@ -259,7 +259,7 @@ a{color:inherit}
     </div>
     <div class="hint">Введите код вида P0171, C0035, B1318 или U0100 — покажем расшифровку, причины и примерную цену. В базе более 80 кодов.</div>
     <div id="codeResult"></div>
-    <div class="stitle">🚨 Ошибки двигателя <span class="cnt" id="errCnt"></span></div>
+    <div class="stitle">🚨 Найденные ошибки <span class="cnt" id="errCnt"></span></div>
     <div id="errList"></div>
     <button class="btn danger" id="clearBtn" style="display:none">🧹 Сбросить ошибки</button>
     <button class="btn ghost" id="exportBtn" style="margin-top:8px">📄 Экспорт отчёта (PDF)</button>
@@ -338,9 +338,13 @@ a{color:inherit}
         <div class="ic">📡</div>
         <div class="tx"><b>Поддержка адаптеров</b><span>ELM327 Bluetooth и Wi-Fi (OBD-II)</span></div>
       </div>
+      <div class="it" id="diagOpen">
+        <div class="ic">🛠</div>
+        <div class="tx"><b>Диагностика связи</b><span>Показать сырые ответы адаптера</span></div>
+      </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 0.6 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 1.1 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -376,7 +380,7 @@ a{color:inherit}
    ============================================================ */
 var ST = {
   connected:false, busy:false, demo:true, connType:"bt",
-  device:null, dtcs:[], car:{},
+  device:null, dtcs:[], groups:[], car:{},
   live:{rpm:0,spd:0,cool:0,load:0,thr:0,volt:0,intk:0,adv:0},
   settings:{auto:false,vibe:true},
   pollTimer:null, demoTimer:null
@@ -558,6 +562,7 @@ function sendCmd(cmd, timeout){
   return new Promise(function(resolve){
     if(!transportAvailable()){ resolve(""); return; }
     var done=false;
+    rxBuf="";
     pendingResolve=function(v){ if(done)return; done=true; resolve(v); };
     transportWrite(cmd+"\r", function(){}, function(){ if(!done){done=true;resolve("");} });
     setTimeout(function(){ if(!done){done=true;pendingResolve=null;var o=rxBuf;rxBuf="";resolve(o);} }, timeout);
@@ -641,6 +646,13 @@ function demoTick(){
   renderLive();
 }
 var DEMO_DTCS=["P0420","P0171","P0300","P0455"];
+var DEMO_GROUPS=[
+  {m:"Двигатель (ECM)", codes:["P0420","P0171","P0300"]},
+  {m:"АКПП (TCM)", codes:["P0700"]},
+  {m:"ABS / ESP", codes:["C0035"]},
+  {m:"Подушки (SRS)", codes:["B1318"]},
+  {m:"Рулевое (EPS)", codes:[]}
+];
 var DEMO_CAR={vin:"XW8ZZZ61ZJG000000",proto:"ISO 15765-4 (CAN 11/500)",fuel:"Бензин",
   ready:"ОК (мониторы пройдены)",mil:"Горит"};
 
@@ -746,6 +758,84 @@ function openDeviceSheet(){
     appendScanUI();
   }, function(){ $("devList").innerHTML='<div class="muted" style="padding:10px 2px">Не удалось получить список. Проверьте разрешения Bluetooth.</div>'; appendScanUI(); });
 }
+/* ===== РАСШИРЕННЫЙ СКАН (UDS 19 02 по блокам) — бета ===== */
+/* универсальный авто-поиск блоков: перебор частых диагностических адресов */
+var PROBE_ADDRS=["7E1","7E2","7E3","760","740","730","765","737","752","751","715","727",
+                 "745","726","720","727","750","7A0","7B7","7C0","706","711","7D0","7E4"];
+var MOD_NAMES={
+  "7E0":"Двигатель","7E1":"АКПП","7E2":"Двигатель/КПП","7E3":"Powertrain","7E4":"Powertrain",
+  "760":"ABS / ESP","740":"ABS / ESP",
+  "730":"Рулевое (EPS)","765":"Рулевое (EPS)",
+  "737":"Подушки (SRS)","752":"Подушки (SRS)","751":"Подушки (SRS)","715":"Подушки (SRS)","727":"Подушки (SRS)",
+  "745":"Кузов (BCM)","726":"Кузов (BCM)","7A0":"Кузов","7C0":"Кузов",
+  "720":"Приборка","750":"Шлюз (Gateway)","7B7":"Климат",
+  "706":"Блок","711":"Блок","7D0":"Блок"
+};
+function modName(addr){ return (MOD_NAMES[addr]||"Блок")+" · "+addr; }
+function udsToCode(b1,b2,b3){
+  var L=["P","C","B","U"][(b1&0xC0)>>6];
+  var d1=((b1&0x30)>>4).toString();
+  var d2=(b1&0x0F).toString(16).toUpperCase();
+  var hx=function(x){return (x<16?"0":"")+x.toString(16).toUpperCase();};
+  var base=L+d1+d2+hx(b2);
+  return b3? base+"-"+hx(b3) : base;
+}
+function parseUDS(resp){
+  var bytes=toBytes(resp), i=0, found=false;
+  for(i=0;i+1<bytes.length;i++){ if(bytes[i]==="59"&&bytes[i+1]==="02"){ found=true; i+=3; break; } }
+  if(!found) return [];
+  var out=[];
+  for(; i+3<bytes.length; i+=4){
+    var b1=H(bytes[i]),b2=H(bytes[i+1]),b3=H(bytes[i+2]);
+    if(b1===0&&b2===0&&b3===0) continue;
+    out.push(udsToCode(b1,b2,b3));
+  }
+  return out;
+}
+function scanOtherModules(groups){
+  var seen={}, seq=Promise.resolve();
+  PROBE_ADDRS.forEach(function(req){
+    if(seen[req]) return; seen[req]=1;
+    var rx=(parseInt(req,16)+8).toString(16).toUpperCase();
+    seq=seq.then(function(){ return queue("ATSH"+req,700); })
+           .then(function(){ return queue("ATCRA"+rx,500); })
+           .then(function(){ return queue("190208",2500); })
+           .then(function(r){
+             var h=cleanHex(r);
+             if(/59\s?02/.test(h)){ groups.push({m:modName(req), codes:parseUDS(r)}); return; }
+             if(/7F\s?19/.test(h)){ groups.push({m:modName(req), codes:[]}); return; } // блок есть, кодов не отдал
+             return queue("03",1800).then(function(r2){
+               var h2=cleanHex(r2);
+               if(/(^|\s)43(\s|$)/.test(h2)){ groups.push({m:modName(req), codes:parseDTCs(r2)}); }
+             });
+           });
+  });
+  return seq.then(function(){ return queue("ATCRA",400); })
+            .then(function(){ return queue("ATAR",400); })
+            .then(function(){ return queue("ATSH7DF",600); });
+}
+function openDiag(){
+  $("shTitle").textContent="Диагностика связи";
+  $("shSub").textContent="Сырые ответы адаптера — для отладки";
+  $("devList").innerHTML='<button class="btn" id="diagRun">▶ Запустить тест</button>'+
+    '<pre id="diagOut" style="white-space:pre-wrap;word-break:break-all;font-size:11px;line-height:1.5;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px;max-height:52vh;overflow:auto;-webkit-user-select:text;user-select:text">Подключитесь к адаптеру и нажмите «Запустить тест».</pre>';
+  $("sheet").classList.add("show");
+  $("diagRun").onclick=runDiag;
+}
+function runDiag(){
+  if(ST.demo){ toast("Выключите демо-режим и подключите реальный адаптер"); return; }
+  if(!ST.connected){ toast("Сначала подключитесь к адаптеру"); return; }
+  var out=$("diagOut"); out.textContent="Тест пошёл…\n";
+  var cmds=["ATZ","ATE0","ATSP0","0100","ATDPN","03","07","0902","010C","0105","ATRV"];
+  var seq=Promise.resolve();
+  cmds.forEach(function(cmd){
+    seq=seq.then(function(){ return queue(cmd,4000); }).then(function(r){
+      out.textContent += ">>> "+cmd+"\n"+JSON.stringify(r||"")+"\n\n";
+      out.scrollTop=out.scrollHeight;
+    });
+  });
+  seq.then(function(){ out.textContent += "--- готово ---"; out.scrollTop=out.scrollHeight; });
+}
 function connectTo(d){
   $("sheet").classList.remove("show");
   setConn("busy","Подключение…",d.name);
@@ -785,34 +875,42 @@ function doScan(){
   $("scanIc").textContent="⏳"; $("scanIc").classList.add("spin");
   $("scanLbl").textContent="Сканирую…";
   $("scanTitle").textContent="Идёт диагностика…";
-  $("scanDesc").innerHTML="Читаю коды неисправностей<br>из блока управления двигателя";
-  var finish=function(codes){
-    ST.dtcs=codes; ST.busy=false;
+  $("scanDesc").innerHTML="Опрашиваю блоки автомобиля<br>по очереди — это занимает до минуты";
+  var finishGroups=function(groups){
+    ST.groups=groups;
+    var flat=[]; groups.forEach(function(g){ flat=flat.concat(g.codes); });
+    ST.dtcs=flat; ST.busy=false;
     $("scanIc").textContent="🔍"; $("scanIc").classList.remove("spin");
     $("scanLbl").textContent="Сканировать";
-    if(codes.length){
-      $("scanTitle").textContent="Найдено ошибок: "+codes.length;
-      $("scanDesc").innerHTML="Откройте вкладку «Ошибки»,<br>чтобы посмотреть подробности";
+    if(flat.length){
+      $("scanTitle").textContent="Найдено ошибок: "+flat.length;
+      $("scanDesc").innerHTML="Откройте вкладку «Ошибки» —<br>они разбиты по блокам";
       vibrate([60,40,60]);
     } else {
       $("scanTitle").textContent="Ошибок не найдено ✅";
-      $("scanDesc").innerHTML="Блок управления двигателя<br>не сообщает о неисправностях";
+      $("scanDesc").innerHTML="Проверенные блоки<br>не сообщают о неисправностях";
       vibrate(40);
     }
     renderErrors(); switchTab("err");
-    toast(codes.length?("Найдено ошибок: "+codes.length):"Ошибок нет ✅");
+    toast(flat.length?("Найдено ошибок: "+flat.length):"Ошибок нет ✅");
   };
-  if(ST.demo){ setTimeout(function(){ finish(DEMO_DTCS.slice()); }, 1600); }
-  else { queue("03",5000).then(function(resp){ finish(parseDTCs(resp)); }); }
+  if(ST.demo){ setTimeout(function(){ finishGroups(JSON.parse(JSON.stringify(DEMO_GROUPS))); }, 1600); }
+  else {
+    var groups=[];
+    queue("03",5000).then(function(resp){
+      groups.push({m:"Двигатель (ECM)", codes:parseDTCs(resp)});
+      return scanOtherModules(groups);
+    }).then(function(){ finishGroups(groups); });
+  }
 }
 function doClear(){
   if(ST.demo){
-    ST.dtcs=[]; renderErrors();
+    ST.dtcs=[]; ST.groups=[]; renderErrors();
     $("scanTitle").textContent="Ошибки сброшены ✅";
     $("scanDesc").innerHTML="Коды стёрты. Если неисправность<br>осталась — ошибка появится снова";
     toast("🧹 Ошибки сброшены (демо)"); vibrate(40); return;
   }
-  queue("04",4000).then(function(){ ST.dtcs=[]; renderErrors(); toast("🧹 Ошибки сброшены"); vibrate(40); });
+  queue("04",4000).then(function(){ ST.dtcs=[]; ST.groups=[]; renderErrors(); toast("🧹 Ошибки сброшены"); vibrate(40); });
 }
 
 /* ===== РЕНДЕР ===== */
@@ -830,15 +928,23 @@ function renderLive(){
   bar("lb-rpm",L.rpm/70);
 }
 function renderErrors(){
-  var list=$("errList"), n=ST.dtcs.length;
-  $("errCnt").textContent=n?("найдено "+n):"";
-  $("clearBtn").style.display=n?"flex":"none";
-  if(!n){
-    list.innerHTML='<div class="empty"><div class="big">'+(ST.connected?"✅":"🚗")+'</div><b>'+(ST.connected?"Ошибок не обнаружено":"Нет данных")+'</b><p>'+(ST.connected?"Нажмите «Сканировать» на главной, чтобы проверить заново":"Подключите адаптер и запустите сканирование на главной вкладке")+'</p></div>';
+  var list=$("errList");
+  var groups=ST.groups||[];
+  var total=0; groups.forEach(function(g){ total+=g.codes.length; });
+  $("errCnt").textContent=total?("найдено "+total):"";
+  $("clearBtn").style.display=total?"flex":"none";
+  if(!groups.length){
+    list.innerHTML='<div class="empty"><div class="big">'+(ST.connected?"✅":"🚗")+'</div><b>'+(ST.connected?"Ещё не сканировали":"Нет данных")+'</b><p>'+(ST.connected?"Нажмите «Сканировать» на главной — ошибки появятся здесь, разбитые по блокам":"Подключите адаптер и запустите сканирование на главной вкладке")+'</p></div>';
     return;
   }
   list.innerHTML="";
-  ST.dtcs.forEach(function(code){ list.appendChild(makeDtcEl(code)); });
+  groups.forEach(function(g){
+    var head=document.createElement("div"); head.className="stitle"; head.style.margin="16px 2px 9px";
+    head.innerHTML='🔧 '+g.m+' <span class="cnt">'+(g.codes.length?("ошибок: "+g.codes.length):"чисто ✅")+'</span>';
+    list.appendChild(head);
+    if(g.codes.length){ g.codes.forEach(function(c){ list.appendChild(makeDtcEl(c)); }); }
+    else { var ok=document.createElement("div"); ok.className="muted"; ok.style.cssText="padding:0 4px 6px;font-size:12.5px"; ok.textContent="Ошибок нет."; list.appendChild(ok); }
+  });
 }
 function makeDtcEl(code, openNote){
   var info=lookup(code), cls=sevCls(info.sev);
@@ -1160,7 +1266,8 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 0.6");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.1");};
+$("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
 $("codeBtn").onclick=searchCode;
