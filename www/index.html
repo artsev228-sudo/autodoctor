@@ -104,6 +104,10 @@ a{color:inherit}
 .dtc .stx.pend{color:#fcd34d;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.12)}
 .glink{display:inline-flex;align-items:center;gap:6px;color:var(--accent2);font-size:13px;font-weight:700;
   text-decoration:none;background:var(--card2);border:1px solid var(--line);padding:9px 13px;border-radius:10px;margin-top:2px}
+.archhdr{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--line);
+  border-radius:11px;padding:11px 13px;margin:2px 0 10px;font-size:13px;font-weight:700;color:var(--muted)}
+.archhdr .ac{color:var(--accent2);font-size:14px}
+.archbox{margin-bottom:6px}
 
 /* buttons */
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;
@@ -350,7 +354,7 @@ a{color:inherit}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 1.8 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 2.0 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -898,6 +902,46 @@ function udsStatus(sb){
   if(sb & 0x04) return "Ожидает";       // ожидающая
   return "Архив";
 }
+/* ===== BMW-режим (F/G-серии): протокол 6F1 + байт-адрес блока, ответ 0x600+addr ===== */
+function vinBrandMode(){
+  var vin=""; try{ var v=$("vinInput"); if(v&&v.value) vin=v.value; }catch(e){}
+  if(!vin && ST.car && ST.car.vin) vin=ST.car.vin;
+  vin=(vin||"").toUpperCase().replace(/\s/g,"");
+  if(/^(WBA|WBS|WBY|WBX|WBV|4US|5UX|WB1|WB5|WMW)/.test(vin)) return "bmw";
+  return "";
+}
+var BMW_MODULES=[
+  {n:"Двигатель (DME/DDE)", a:"12"},
+  {n:"АКПП (EGS)", a:"18"},
+  {n:"ABS / DSC", a:"29"},
+  {n:"Подушки (ACSM/SRS)", a:"40"},
+  {n:"Рулевое (EPS)", a:"48"},
+  {n:"Кузов (FEM/BDC)", a:"00"},
+  {n:"Приборка (KOMBI)", a:"60"},
+  {n:"Климат (IHKA)", a:"78"},
+  {n:"Доступ (CAS/FRM)", a:"72"}
+];
+function scanBmwModules(groups, onStep){
+  var seq=queue("ATCAF0",600).then(function(){ return queue("ATSH6F1",400); });
+  BMW_MODULES.forEach(function(m){
+    seq=seq.then(function(){
+      if(ST.scanAbort) return;
+      var raw="";
+      return queue("ATCRA6"+m.a,400)
+        .then(function(){ return queue(m.a+"031902FF",2500); })            // запрос всех DTC
+        .then(function(r){ raw=r||""; return queue(m.a+"300000",2000); })  // flow control для многокадровых
+        .then(function(r2){ raw+=" "+(r2||"");
+          if(/59\s?02/.test(cleanHex(raw))){ groups.push({m:"BMW "+m.n+" · "+m.a, codes:parseUDS(raw)}); }
+        })
+        .then(function(){ if(onStep) onStep("BMW "+m.n); })
+        .catch(function(){ if(onStep) onStep("BMW "+m.n); });
+    });
+  });
+  return seq.then(function(){ return queue("ATCAF1",500); })
+            .then(function(){ return queue("ATCRA",400); })
+            .then(function(){ return queue("ATAR",400); })
+            .then(function(){ return queue("ATSH7DF",500); });
+}
 function scanOtherModules(groups, onStep){
   var seen={}, seq=Promise.resolve();
   PROBE_ADDRS.forEach(function(req){
@@ -1020,7 +1064,9 @@ function doScan(){
       .then(function(r){ ec=ec.concat(parseDTCs(r,"4A"));
         var u=[],seen={}; ec.forEach(function(x){ if(!seen[x.c]){seen[x.c]=1; u.push(x);} });
         groups.push({m:"Двигатель (ECM)", codes:u}); prog("Двигатель");
-        return scanOtherModules(groups, prog);
+        return scanOtherModules(groups, prog).then(function(){
+          if(vinBrandMode()==="bmw") return scanBmwModules(groups, prog);
+        });
       }).then(function(){ finishGroups(groups); }).catch(function(){ finishGroups(groups); });
   }
 }
@@ -1067,8 +1113,19 @@ function renderErrors(){
     var head=document.createElement("div"); head.className="stitle"; head.style.margin="16px 2px 9px";
     head.innerHTML='🔧 '+g.m+' <span class="cnt">'+(g.codes.length?("ошибок: "+g.codes.length):"чисто ✅")+'</span>';
     list.appendChild(head);
-    if(g.codes.length){ g.codes.forEach(function(c){ list.appendChild(makeDtcEl(c)); }); }
-    else { var ok=document.createElement("div"); ok.className="muted"; ok.style.cssText="padding:0 4px 6px;font-size:12.5px"; ok.textContent="Ошибок нет."; list.appendChild(ok); }
+    if(!g.codes.length){ var ok=document.createElement("div"); ok.className="muted"; ok.style.cssText="padding:0 4px 6px;font-size:12.5px"; ok.textContent="Ошибок нет."; list.appendChild(ok); return; }
+    var active=[], arch=[];
+    g.codes.forEach(function(c){ if((c.st||"")==="Архив") arch.push(c); else active.push(c); });
+    active.forEach(function(c){ list.appendChild(makeDtcEl(c)); });
+    if(!active.length && arch.length){ var na=document.createElement("div"); na.className="muted"; na.style.cssText="padding:0 4px 6px;font-size:12.5px"; na.textContent="Активных ошибок нет — только архивные."; list.appendChild(na); }
+    if(arch.length){
+      var ah=document.createElement("div"); ah.className="archhdr";
+      ah.innerHTML='<span>🗄 Архив (неактивные): '+arch.length+'</span><span class="ac" data-ac>▾ показать</span>';
+      var box=document.createElement("div"); box.className="archbox"; box.style.display="none";
+      arch.forEach(function(c){ box.appendChild(makeDtcEl(c)); });
+      ah.onclick=function(){ var op=box.style.display!=="none"; box.style.display=op?"none":"block"; ah.querySelector("[data-ac]").textContent=op?"▾ показать":"▴ скрыть"; };
+      list.appendChild(ah); list.appendChild(box);
+    }
   });
 }
 function brandHint(){ try{ var v=$("vinInput"); if(v&&v.value){ var r=decodeVIN(v.value); if(r&&!r.error&&r.brand) return r.brand; } }catch(e){} return ""; }
@@ -1078,13 +1135,14 @@ function makeDtcEl(item, openNote){
   var st=(typeof item==="string")?"":((item&&item.st)||"");
   var stCls=st==="Активна"?"act":(st==="Ожидает"?"pend":"");
   var stTag=st?'<span class="stx '+stCls+'">'+st+'</span>':"";
-  var info=lookup(code), cls=sevCls(info.sev);
+  var info=lookup(code), cls=(st==="Архив")?"sev-low":sevCls(info.sev);
+  var sevHtml=(st==="Архив")?'<span class="sev" style="background:var(--card2);color:var(--muted)">'+sevLabel(info.sev)+'</span>':'<span class="sev">'+sevLabel(info.sev)+'</span>';
   var known=!!DB[code];
   var causes=(info.c||[]).map(function(x){return "<li>"+x+"</li>";}).join("");
   var el=document.createElement("div");
   el.className="dtc "+cls;
   el.innerHTML=
-    '<div class="top"><span class="code">'+code+'</span>'+stTag+'<span class="sev">'+sevLabel(info.sev)+'</span></div>'+
+    '<div class="top"><span class="code">'+code+'</span>'+stTag+sevHtml+'</div>'+
     '<div class="title">'+info.t+'</div>'+
     '<div class="chev" data-chev>▾ Подробнее</div>'+
     '<div class="detail">'+
@@ -1240,21 +1298,24 @@ function renderVIN(raw){
       (r.year? '' : '<div class="vwarn">Год определить не удалось — возможно, нестандартный VIN.</div>')+
       (r.checkApplicable && r.checkOk===false ? '<div class="vwarn">Контрольный разряд не сошёлся — возможна ошибка в одном символе.</div>':'')+
     '</div>';
+  box.insertAdjacentHTML('beforeend','<a class="glink" style="margin-top:10px" href="https://www.google.com/search?q='+encodeURIComponent("VIN "+r.vin+" расшифровка марка модель год")+'" target="_blank" rel="noopener">🔎 Узнать модель по VIN (онлайн)</a>');
   box.insertAdjacentHTML('beforeend', brandTips(r.brand));
 }
 function applyVin(vin){ if(!vin) return; var inp=$("vinInput"); if(inp) inp.value=vin; renderVIN(vin); }
 
 /* чтение VIN с адаптера (режим 09, PID 02) */
 function parseVINResp(resp){
-  var bytes=toBytes(resp);
+  var bytes=toBytes(resp), start=-1;
+  for(var i=0;i+1<bytes.length;i++){ if(bytes[i]==="49"&&bytes[i+1]==="02"){ start=i+2; break; } }
+  if(start<0) return "";
+  if(bytes[start]==="01") start++;   // число элементов данных (NODI)
   var chars=[];
-  for(var i=0;i<bytes.length;i++){
-    if(bytes[i]==="49"&&bytes[i+1]==="02"){ i+=2; if(bytes[i]==="01")i++; continue; }
-    var val=H(bytes[i]);
+  for(var j=start;j<bytes.length && chars.length<17;j++){
+    var val=H(bytes[j]);
     if(val>=0x30&&val<=0x5A){ var ch=String.fromCharCode(val); if(/[A-HJ-NPR-Z0-9]/.test(ch)) chars.push(ch); }
   }
-  var vin=chars.join(""); if(vin.length>17) vin=vin.slice(-17);
-  return vin.length>=11?vin:"";
+  var vin=chars.join("");
+  return vin.length===17?vin:"";
 }
 function readVehicleReal(){
   queue("0902",6000).then(function(r){
@@ -1405,7 +1466,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.8");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.0");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
