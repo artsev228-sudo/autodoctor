@@ -1,0 +1,8 @@
+{
+  "appId": "com.bobik.obd",
+  "appName": "АвтоДоктор",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}
