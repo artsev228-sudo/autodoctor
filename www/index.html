@@ -171,6 +171,7 @@ a{color:inherit}
 .dev .nm{font-weight:700;font-size:14px}
 .dev .ad{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
 .dev .go{margin-left:auto;color:var(--accent2);font-size:13px;font-weight:700}
+#devList{max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:2px}
 
 .page{display:none}
 .page.on{display:block;animation:fade .25s}
@@ -337,7 +338,7 @@ a{color:inherit}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 0.2 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 0.4 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -685,6 +686,35 @@ function connectWifi(ip,port){
     toast("❌ Ошибка Wi-Fi подключения");
   });
 }
+function isObdName(n){ return /obd|elm|vlink|v-link|viecar|vgate|konnwei|icar|327/i.test(n||""); }
+function deviceRow(d){
+  var el=document.createElement("div");
+  el.className="dev";
+  el.innerHTML='<span class="ic">🔌</span><div><div class="nm">'+(d.name||"Устройство")+'</div><div class="ad">'+d.address+'</div></div><span class="go">Подключить →</span>';
+  el.onclick=function(){ connectTo(d); };
+  return el;
+}
+function appendScanUI(){
+  var wrap=document.createElement("div");
+  wrap.innerHTML='<div style="font-size:11.5px;color:var(--muted);margin:14px 2px 8px;line-height:1.4">Нет своего адаптера в списке? Найдите новый (ещё не сопряжённый). Адаптер должен быть запитан — включите зажигание.</div>'+
+    '<button class="btn ghost" id="scanUnpairedBtn">🔍 Отсканировать</button>'+
+    '<div id="unpairedList" style="margin-top:8px"></div>';
+  $("devList").appendChild(wrap);
+  $("scanUnpairedBtn").onclick=scanUnpaired;
+}
+function scanUnpaired(){
+  if(!hasBT || !BT.discoverUnpaired){ toast("Поиск недоступен в этой сборке"); return; }
+  var btn=$("scanUnpairedBtn"); btn.textContent="🔄 Идёт поиск… (до 20 сек)"; btn.disabled=true;
+  $("unpairedList").innerHTML="";
+  BT.discoverUnpaired(function(devs){
+    btn.textContent="🔍 Отсканировать заново"; btn.disabled=false;
+    if(!devs||!devs.length){ $("unpairedList").innerHTML='<div class="muted" style="padding:6px 2px">Новых устройств не найдено. Проверьте, что адаптер запитан (зажигание включено) и его лампочка горит.</div>'; return; }
+    devs.sort(function(a,b){ return (isObdName(a.name)?0:1)-(isObdName(b.name)?0:1); });
+    $("unpairedList").innerHTML="";
+    devs.forEach(function(d){ $("unpairedList").appendChild(deviceRow(d)); });
+    toast("Найдено устройств: "+devs.length);
+  }, function(){ btn.textContent="🔍 Отсканировать заново"; btn.disabled=false; toast("Поиск не удался. Разрешите «Устройства поблизости» / геолокацию."); });
+}
 function openDeviceSheet(){
   $("sheet").classList.add("show");
   $("devList").innerHTML='<div class="muted" style="padding:10px 2px">Поиск сопряжённых устройств…</div>';
@@ -693,16 +723,15 @@ function openDeviceSheet(){
     return;
   }
   BT.list(function(devs){
-    if(!devs||!devs.length){ $("devList").innerHTML='<div class="empty" style="padding:18px"><div class="big">🔍</div><b>Адаптеры не найдены</b><p>Сначала сопрягите ELM327 в настройках Bluetooth телефона (PIN обычно 1234 или 0000), затем вернитесь сюда.</p></div>'; return; }
     $("devList").innerHTML="";
-    devs.forEach(function(d){
-      var el=document.createElement("div");
-      el.className="dev";
-      el.innerHTML='<span class="ic">🔌</span><div><div class="nm">'+(d.name||"Устройство")+'</div><div class="ad">'+d.address+'</div></div><span class="go">Подключить →</span>';
-      el.onclick=function(){ connectTo(d); };
-      $("devList").appendChild(el);
-    });
-  }, function(){ $("devList").innerHTML='<div class="muted" style="padding:10px 2px">Не удалось получить список. Проверьте разрешения Bluetooth.</div>'; });
+    if(devs&&devs.length){
+      devs.sort(function(a,b){ return (isObdName(a.name)?0:1)-(isObdName(b.name)?0:1); });
+      devs.forEach(function(d){ $("devList").appendChild(deviceRow(d)); });
+    } else {
+      $("devList").innerHTML='<div class="muted" style="padding:8px 2px">Сопряжённых адаптеров нет. Нажмите «Отсканировать», чтобы найти адаптер, или сопрягите его в настройках Bluetooth (PIN 1234).</div>';
+    }
+    appendScanUI();
+  }, function(){ $("devList").innerHTML='<div class="muted" style="padding:10px 2px">Не удалось получить список. Проверьте разрешения Bluetooth.</div>'; appendScanUI(); });
 }
 function connectTo(d){
   $("sheet").classList.remove("show");
@@ -1119,7 +1148,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 0.2");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 0.4");};
 
 /* поиск по коду ошибки */
 $("codeBtn").onclick=searchCode;
