@@ -49,11 +49,13 @@ a{color:inherit}
   display:flex;align-items:center;justify-content:center;position:relative;
   background:radial-gradient(circle at 50% 40%,rgba(59,130,246,.22),transparent 70%)}
 .hero .ring::before{content:"";position:absolute;inset:0;border-radius:50%;
-  border:2px solid rgba(59,130,246,.25)}
+  border:2px solid rgba(59,130,246,.25);pointer-events:none}
 .hero .ring .big{width:96px;height:96px;border-radius:50%;border:0;color:#fff;font-weight:800;font-size:15px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 26px rgba(59,130,246,.4);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .hero .ring .big .ic{font-size:26px}
+.hero .ring .big{cursor:pointer}
+.hero .ring .big:active{transform:scale(.95)}
 .hero h2{margin:4px 0 2px;font-size:17px}
 .hero p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
 .hero .spin{animation:rot 1.1s linear infinite}
@@ -338,7 +340,7 @@ a{color:inherit}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 0.4 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 0.6 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -565,15 +567,27 @@ function queue(cmd,t){ cmdQueue = cmdQueue.then(function(){ return sendCmd(cmd,t
 
 function initElm(){
   return queue("ATZ",2500).then(function(){return queue("ATE0");}).then(function(){return queue("ATL0");})
-    .then(function(){return queue("ATS0");}).then(function(){return queue("ATH0");})
+    .then(function(){return queue("ATS1");}).then(function(){return queue("ATH0");})
     .then(function(){return queue("ATSP0");}).then(function(){return queue("0100",5000);});
 }
-function cleanHex(s){ return (s||"").replace(/[\r\n>]/g," ").replace(/\s+/g," ").trim().toUpperCase(); }
+function cleanHex(s){
+  return (s||"").toUpperCase()
+    .replace(/SEARCHING|NO DATA|STOPPED|UNABLE TO CONNECT|BUS INIT[A-Z.]*|BUFFER FULL|ERROR|\?/g,"")
+    .replace(/[\r\n>]/g," ").replace(/\s+/g," ").trim();
+}
+function toBytes(resp){
+  var s=cleanHex(resp);
+  if(/\s/.test(s)){
+    return s.split(" ").filter(function(b){return /^[0-9A-F]{2}$/.test(b);});
+  }
+  s=s.replace(/[^0-9A-F]/g,""); var out=[];
+  for(var i=0;i+1<s.length;i+=2) out.push(s.substr(i,2));
+  return out;
+}
 function H(b){return parseInt(b,16);}
 
 function parseDTCs(resp){
-  var s = cleanHex(resp).replace(/SEARCHING|NO DATA|STOPPED|UNABLE TO CONNECT/g,"");
-  var bytes = s.split(" ").filter(function(b){return /^[0-9A-F]{2}$/.test(b);});
+  var bytes = toBytes(resp);
   var out=[], i=0, seen43=false;
   for(i=0;i<bytes.length;i++){ if(bytes[i]==="43"){ seen43=true; i++; break; } }
   if(!seen43) i=0;
@@ -590,8 +604,7 @@ function parseDTCs(resp){
   return out;
 }
 function hexPair(resp, pidHdr){
-  var s=cleanHex(resp);
-  var bytes=s.split(" ").filter(function(b){return /^[0-9A-F]{2}$/.test(b);});
+  var bytes=toBytes(resp);
   for(var i=0;i<bytes.length-1;i++){ if(bytes[i]==="41" && bytes[i+1]===pidHdr){ return bytes.slice(i+2); } }
   return [];
 }
@@ -995,8 +1008,7 @@ function applyVin(vin){ if(!vin) return; var inp=$("vinInput"); if(inp) inp.valu
 
 /* чтение VIN с адаптера (режим 09, PID 02) */
 function parseVINResp(resp){
-  var s=cleanHex(resp);
-  var bytes=s.split(" ").filter(function(b){return /^[0-9A-F]{2}$/.test(b);});
+  var bytes=toBytes(resp);
   var chars=[];
   for(var i=0;i<bytes.length;i++){
     if(bytes[i]==="49"&&bytes[i+1]==="02"){ i+=2; if(bytes[i]==="01")i++; continue; }
@@ -1148,7 +1160,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 0.4");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 0.6");};
 
 /* поиск по коду ошибки */
 $("codeBtn").onclick=searchCode;
