@@ -98,6 +98,12 @@ a{color:inherit}
 .dtc .detail ul{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.55;color:#d6d8e3}
 .dtc .cost{display:inline-block;margin-top:4px;font-size:13px;font-weight:700;color:var(--txt);
   background:var(--card2);border:1px solid var(--line);padding:5px 11px;border-radius:9px}
+.dtc .stx{font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;margin-left:7px;
+  background:var(--card2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.dtc .stx.act{color:#fca5a5;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.12)}
+.dtc .stx.pend{color:#fcd34d;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.12)}
+.glink{display:inline-flex;align-items:center;gap:6px;color:var(--accent2);font-size:13px;font-weight:700;
+  text-decoration:none;background:var(--card2);border:1px solid var(--line);padding:9px 13px;border-radius:10px;margin-top:2px}
 
 /* buttons */
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:13px;
@@ -344,7 +350,7 @@ a{color:inherit}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic">ℹ️</div>
-        <div class="tx"><b>О приложении</b><span>Версия 1.5 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 1.8 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -678,12 +684,13 @@ function dtcFromBytes(a,b){
   var b2=(b<16?"0":"")+b.toString(16).toUpperCase();
   return L+d1+d2+b2;
 }
-function parseDTCs(resp){
-  /* CAN (ISO 15765) формат: на 03 могут ответить несколько блоков.
-     Каждый сегмент: 43 <кол-во> <пары кодов>. Учитываем счётчик, склейку и дубли. */
+function parseDTCs(resp, mk){
+  /* CAN (ISO 15765): несколько блоков отвечают сегментами <mk> <кол-во> <пары>.
+     mk: 43 (режим 03), 47 (07 — ожидающие), 4A (0A — постоянные). */
+  mk = mk || "43";
   var bytes=toBytes(resp), out=[], i=0;
   while(i<bytes.length){
-    if(bytes[i]!=="43"){ i++; continue; }
+    if(bytes[i]!==mk){ i++; continue; }
     i++;                                  // мимо 43
     if(i>=bytes.length) break;
     var cnt=H(bytes[i]); i++;             // число кодов у этого блока
@@ -694,7 +701,8 @@ function parseDTCs(resp){
       out.push(dtcFromBytes(a,b));
     }
   }
-  var u=[]; out.forEach(function(c){ if(u.indexOf(c)<0) u.push(c); });
+  var st = mk==="47"?"Ожидает" : mk==="4A"?"Постоянная" : "Подтверждённая";
+  var u=[],seen={}; out.forEach(function(c){ if(!seen[c]){seen[c]=1; u.push({c:c,st:st});} });
   return u;
 }
 function hexPair(resp, pidHdr){
@@ -736,10 +744,10 @@ function demoTick(){
 }
 var DEMO_DTCS=["P0420","P0171","P0300","P0455"];
 var DEMO_GROUPS=[
-  {m:"Двигатель (ECM)", codes:["P0420","P0171","P0300"]},
-  {m:"АКПП (TCM)", codes:["P0700"]},
-  {m:"ABS / ESP", codes:["C0035"]},
-  {m:"Подушки (SRS)", codes:["B1318"]},
+  {m:"Двигатель (ECM)", codes:[{c:"P0420",st:"Активна"},{c:"P0171",st:"Архив"},{c:"P0300",st:"Ожидает"}]},
+  {m:"АКПП (TCM)", codes:[{c:"P0700",st:"Архив"}]},
+  {m:"ABS / ESP", codes:[{c:"C0035",st:"Активна"}]},
+  {m:"Подушки (SRS)", codes:[{c:"B1318",st:"Архив"}]},
   {m:"Рулевое (EPS)", codes:[]}
 ];
 var DEMO_CAR={vin:"XW8ZZZ61ZJG000000",proto:"ISO 15765-4 (CAN 11/500)",fuel:"Бензин",
@@ -873,14 +881,22 @@ function parseUDS(resp){
   var bytes=toBytes(resp), i=0, found=false;
   for(i=0;i+1<bytes.length;i++){ if(bytes[i]==="59"&&bytes[i+1]==="02"){ found=true; i+=3; break; } }
   if(!found) return [];
-  var out=[];
+  var out=[],seen={};
   for(; i+3<bytes.length; i+=4){
-    var b1=H(bytes[i]),b2=H(bytes[i+1]),b3=H(bytes[i+2]);
+    var b1=H(bytes[i]),b2=H(bytes[i+1]),b3=H(bytes[i+2]),sb=H(bytes[i+3]);
     if(b1===0&&b2===0&&b3===0) continue;
-    out.push(udsToCode(b1,b2,b3));
+    var code=udsToCode(b1,b2,b3);
+    if(seen[code]) continue; seen[code]=1;
+    out.push({c:code, st:udsStatus(sb)});
   }
-  var u=[]; out.forEach(function(c){ if(u.indexOf(c)<0) u.push(c); });
-  return u;
+  return out;
+}
+function udsStatus(sb){
+  if(isNaN(sb)) return "";
+  if(sb & 0x01) return "Активна";       // ошибка активна сейчас
+  if(sb & 0x08) return "Архив";         // подтверждена ранее, сейчас не активна
+  if(sb & 0x04) return "Ожидает";       // ожидающая
+  return "Архив";
 }
 function scanOtherModules(groups, onStep){
   var seen={}, seq=Promise.resolve();
@@ -891,7 +907,7 @@ function scanOtherModules(groups, onStep){
       if(ST.scanAbort) return;
       return queue("ATSH"+req,600)
         .then(function(){ return queue("ATCRA"+rx,500); })
-        .then(function(){ return queue("190208",1500); })
+        .then(function(){ return queue("1902FF",3000); })
         .then(function(r){
           var h=cleanHex(r);
           if(/59\s?02/.test(h)){ groups.push({m:modName(req), codes:parseUDS(r)}); return; }
@@ -972,7 +988,7 @@ function doScan(){
   $("scanDesc").innerHTML="Опрашиваю блоки по очереди…<br>Нажмите кнопку ещё раз, чтобы остановить";
   var finishGroups=function(groups){
     ST.groups=groups;
-    var flat=[]; groups.forEach(function(g){ flat=flat.concat(g.codes); });
+    var flat=[]; groups.forEach(function(g){ g.codes.forEach(function(x){ flat.push(x.c); }); });
     ST.dtcs=flat; ST.busy=false;
     var aborted=ST.scanAbort; ST.scanAbort=false;
     if(!ST.demo && ST.connected) startLive();
@@ -998,10 +1014,14 @@ function doScan(){
     var prog=function(label){ done++; var p=Math.min(99,Math.round(done/total*100));
       $("scanLbl").textContent=p+"%"; $("scanTitle").textContent="Сканирую… "+p+"%";
       if(label) $("scanDesc").innerHTML="Проверяю: "+label+"<br>Нажмите кнопку, чтобы остановить"; };
-    queue("03",4000).then(function(resp){
-      groups.push({m:"Двигатель (ECM)", codes:parseDTCs(resp)}); prog("Двигатель");
-      return scanOtherModules(groups, prog);
-    }).then(function(){ finishGroups(groups); }).catch(function(){ finishGroups(groups); });
+    var ec=[];
+    queue("03",4000).then(function(r){ ec=ec.concat(parseDTCs(r,"43")); return queue("07",3000); })
+      .then(function(r){ ec=ec.concat(parseDTCs(r,"47")); return queue("0A",3000); })
+      .then(function(r){ ec=ec.concat(parseDTCs(r,"4A"));
+        var u=[],seen={}; ec.forEach(function(x){ if(!seen[x.c]){seen[x.c]=1; u.push(x);} });
+        groups.push({m:"Двигатель (ECM)", codes:u}); prog("Двигатель");
+        return scanOtherModules(groups, prog);
+      }).then(function(){ finishGroups(groups); }).catch(function(){ finishGroups(groups); });
   }
 }
 function doClear(){
@@ -1051,14 +1071,20 @@ function renderErrors(){
     else { var ok=document.createElement("div"); ok.className="muted"; ok.style.cssText="padding:0 4px 6px;font-size:12.5px"; ok.textContent="Ошибок нет."; list.appendChild(ok); }
   });
 }
-function makeDtcEl(code, openNote){
+function brandHint(){ try{ var v=$("vinInput"); if(v&&v.value){ var r=decodeVIN(v.value); if(r&&!r.error&&r.brand) return r.brand; } }catch(e){} return ""; }
+function gUrl(code){ return "https://www.google.com/search?q="+encodeURIComponent("код "+code+" расшифровка ошибка "+brandHint()); }
+function makeDtcEl(item, openNote){
+  var code=(typeof item==="string")?item:(item&&item.c)||"";
+  var st=(typeof item==="string")?"":((item&&item.st)||"");
+  var stCls=st==="Активна"?"act":(st==="Ожидает"?"pend":"");
+  var stTag=st?'<span class="stx '+stCls+'">'+st+'</span>':"";
   var info=lookup(code), cls=sevCls(info.sev);
   var known=!!DB[code];
   var causes=(info.c||[]).map(function(x){return "<li>"+x+"</li>";}).join("");
   var el=document.createElement("div");
   el.className="dtc "+cls;
   el.innerHTML=
-    '<div class="top"><span class="code">'+code+'</span><span class="sev">'+sevLabel(info.sev)+'</span></div>'+
+    '<div class="top"><span class="code">'+code+'</span>'+stTag+'<span class="sev">'+sevLabel(info.sev)+'</span></div>'+
     '<div class="title">'+info.t+'</div>'+
     '<div class="chev" data-chev>▾ Подробнее</div>'+
     '<div class="detail">'+
@@ -1066,6 +1092,7 @@ function makeDtcEl(code, openNote){
       (causes?'<div class="blk"><h4>Возможные причины</h4><ul>'+causes+'</ul></div>':"")+
       '<div class="blk"><h4>Что делать</h4><p>'+info.f+'</p></div>'+
       '<div class="blk"><h4>Примерная стоимость</h4><span class="cost">💰 '+info.p+'</span></div>'+
+      '<div class="blk"><a class="glink" href="'+gUrl(code)+'" target="_blank" rel="noopener">🔎 Найти расшифровку в Google</a></div>'+
     '</div>';
   var toggle=function(){ el.classList.toggle("open"); el.querySelector("[data-chev]").textContent=el.classList.contains("open")?"▴ Свернуть":"▾ Подробнее"; };
   el.querySelector(".top").onclick=toggle; el.querySelector(".title").onclick=toggle; el.querySelector("[data-chev]").onclick=toggle;
@@ -1232,7 +1259,14 @@ function parseVINResp(resp){
 function readVehicleReal(){
   queue("0902",6000).then(function(r){
     var vin=parseVINResp(r);
-    if(vin){ ST.car.vin=vin; applyVin(vin); }
+    if(vin){ ST.car.vin=vin; applyVin(vin); return; }
+    // запасной путь: спросить VIN прямо у блока двигателя (7E0)
+    return queue("ATSH7E0",600).then(function(){ return queue("ATCRA7E8",500); })
+      .then(function(){ return queue("0902",6000); })
+      .then(function(r2){ var v2=parseVINResp(r2); if(v2){ ST.car.vin=v2; applyVin(v2); } })
+      .then(function(){ return queue("ATCRA",400); })
+      .then(function(){ return queue("ATAR",400); })
+      .then(function(){ return queue("ATSH7DF",500); });
   }).then(function(){ return queue("ATDPN",1500); }).then(function(r){
     var p=(r||"").replace(/[\r\n>]/g,"").trim();
     if(p) ST.car.proto=p;
@@ -1371,7 +1405,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.5");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 1.8");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
