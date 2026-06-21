@@ -251,6 +251,14 @@ svg{display:block}
 .tile .val{font-size:23px}
 .tile .lbl{font-size:11.5px}
 .tile .lbl svg{width:16px;height:16px}
+
+/* ===== ЗАПОЛНЕНИЕ 2.6 (надёжно) ===== */
+.page.on{min-height:calc(100vh - 178px);min-height:calc(100dvh - 178px);display:flex;flex-direction:column}
+#p-home #liveGrid,#p-live .grid{flex:1 1 auto;grid-auto-rows:1fr}
+#p-home .tile,#p-live .tile{display:flex;flex-direction:column;justify-content:center}
+.page.on > .empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0}
+#p-err #errList:empty + .btn{margin-top:auto}
+#p-car #carInfo:empty ~ .empty{flex:1}
 </style>
 </head>
 <body>
@@ -387,7 +395,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 2.5 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 2.7 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -1499,7 +1507,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.5");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.7");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
@@ -1522,6 +1530,19 @@ $("shClose").onclick=function(){$("sheet").classList.remove("show");};
 ST.demo = !hasBT ? true : ST.demo;
 $("swDemo").classList.toggle("on",ST.demo);
 $("hsub").textContent= ST.demo?"Демо-режим • OBD-II":"Диагностика по OBD-II";
+/* подгон высоты активной вкладки точно под экран (надёжнее vh/dvh) */
+function fitPage(){
+  var p=document.querySelector(".page.on"); if(!p) return;
+  var tab=document.querySelector(".tabbar");
+  var top=p.getBoundingClientRect().top + (window.pageYOffset||0);
+  var avail=window.innerHeight - top - (tab?tab.offsetHeight:78) - 6;
+  p.style.minHeight = Math.max(300, avail) + "px";
+}
+(function(){ var os=switchTab; switchTab=function(x){ os(x); setTimeout(fitPage,0); }; })();
+window.addEventListener("resize", fitPage);
+window.addEventListener("orientationchange", function(){ setTimeout(fitPage,200); });
+setTimeout(fitPage,0); setTimeout(fitPage,300);
+
 resetLive();
 renderErrors();
 </script>
