@@ -259,6 +259,13 @@ svg{display:block}
 .page.on > .empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0}
 #p-err #errList:empty + .btn{margin-top:auto}
 #p-car #carInfo:empty ~ .empty{flex:1}
+
+/* ===== ФИКС ШТОРКИ ВЫБОРА АДАПТЕРА (2.8) ===== */
+.sheet .pn{max-height:86vh;max-height:86dvh;display:flex;flex-direction:column;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.sheet .pn .grip,.sheet .pn h3,.sheet .pn .sub{flex:0 0 auto}
+#devList{flex:1 1 auto;max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:60px}
+.sheet .pn > .btn{flex:0 0 auto;margin-top:10px}
 </style>
 </head>
 <body>
@@ -395,7 +402,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 2.7 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 2.9 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -1253,11 +1260,9 @@ function vinBrand(v){ return VIN_WMI[v.substr(0,3)] || VIN_WMI[v.substr(0,2)] ||
 var VIN_YEAR={A:1980,B:1981,C:1982,D:1983,E:1984,F:1985,G:1986,H:1987,J:1988,K:1989,L:1990,M:1991,N:1992,P:1993,R:1994,S:1995,T:1996,V:1997,W:1998,X:1999,Y:2000,"1":2001,"2":2002,"3":2003,"4":2004,"5":2005,"6":2006,"7":2007,"8":2008,"9":2009};
 function vinYear(v){
   var base=VIN_YEAR[v[9]]; if(!base) return null;
-  var p7=v[6], modern=/[A-Z]/.test(p7); // буква на 7-й позиции → цикл 2010+
-  var y=base;
-  if(modern && base<=2009) y=base+30;
   var now=(new Date()).getFullYear();
-  if(y>now+1 && y-30>=1980) y-=30; // не уезжаем в будущее
+  var y=base;
+  if(base+30 <= now+1) y=base+30; // коды года повторяются каждые 30 лет: берём более свежий, но не будущее
   return y;
 }
 var VIN_TRANS={A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,J:1,K:2,L:3,M:4,N:5,P:7,R:9,S:2,T:3,U:4,V:5,W:6,X:7,Y:8,Z:9};
@@ -1507,7 +1512,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.7");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.9");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
