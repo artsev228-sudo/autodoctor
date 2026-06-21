@@ -266,6 +266,36 @@ svg{display:block}
 .sheet .pn .grip,.sheet .pn h3,.sheet .pn .sub{flex:0 0 auto}
 #devList{flex:1 1 auto;max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:60px}
 .sheet .pn > .btn{flex:0 0 auto;margin-top:10px}
+
+/* ===== ЯРКАЯ НИЖНЯЯ НАВИГАЦИЯ (3.0) ===== */
+.tabbar{background:rgba(11,13,20,.95);border-top:1px solid rgba(255,255,255,.08);
+  padding:8px 8px calc(10px + env(safe-area-inset-bottom))}
+.tabbar .t{color:#9aa1b8;gap:3px;border-radius:14px;padding:7px 0 5px;position:relative;z-index:1}
+.tabbar .t svg{width:23px;height:23px;stroke-width:2}
+.tabbar .t span{font-size:10px;font-weight:700}
+.tabbar .t:active{transform:scale(.92)}
+.tabbar .t.on{color:#eaf4ff}
+.tabbar .t.on svg{stroke:#fff;filter:drop-shadow(0 0 7px rgba(34,211,238,.65))}
+.tabbar .t.on::after{content:"";position:absolute;inset:2px 6px;border-radius:14px;z-index:-1;
+  background:linear-gradient(135deg,rgba(59,130,246,.28),rgba(34,211,238,.20));
+  border:1px solid rgba(59,130,246,.45);box-shadow:0 4px 14px rgba(59,130,246,.3)}
+.tabbar .t.on::before{top:-8px;width:28px;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 8px rgba(34,211,238,.7)}
+
+/* ===== ЦВЕТНЫЕ ИКОНКИ НАВИГАЦИИ (3.1) ===== */
+.tabbar .t[data-tab="home"] svg{stroke:#3b82f6}
+.tabbar .t[data-tab="err"] svg{stroke:#ef4444}
+.tabbar .t[data-tab="live"] svg{stroke:#22c55e}
+.tabbar .t[data-tab="car"] svg{stroke:#22d3ee}
+.tabbar .t[data-tab="set"] svg{stroke:#a855f7}
+.tabbar .t.on svg{filter:drop-shadow(0 0 7px currentColor);transform:translateY(-1px) scale(1.1)}
+.tabbar .t.on[data-tab="home"]{color:#3b82f6}
+.tabbar .t.on[data-tab="err"]{color:#ef4444}
+.tabbar .t.on[data-tab="live"]{color:#22c55e}
+.tabbar .t.on[data-tab="car"]{color:#22d3ee}
+.tabbar .t.on[data-tab="set"]{color:#a855f7}
+.tabbar .t.on::after{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-color:rgba(255,255,255,.14)}
+.tabbar .t.on::before{background:currentColor;box-shadow:0 0 8px currentColor}
 </style>
 </head>
 <body>
@@ -402,7 +432,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 2.9 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 3.1 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -1512,7 +1542,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.9");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 3.1");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
