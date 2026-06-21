@@ -236,6 +236,29 @@ svg{display:block}
 .set:nth-of-type(2) .it:nth-child(1) .ic svg{stroke:#3b82f6}
 .set:nth-of-type(2) .it:nth-child(2) .ic svg{stroke:#f97316}
 .set:nth-of-type(2) .it:nth-child(3) .ic svg{stroke:#38bdf8}
+
+/* ===== ЗАПОЛНЕНИЕ ЭКРАНА БЕЗ ПУСТОТЫ (2.5) ===== */
+.page.on{min-height:calc(100dvh - 196px);display:flex;flex-direction:column}
+#p-home #liveGrid,#p-live .grid{flex:1 1 auto;grid-auto-rows:1fr}
+#p-home .tile,#p-live .tile{display:flex;flex-direction:column;justify-content:center}
+#p-home .adslot{flex:0 0 auto}
+.hero{padding:16px}
+.hero .ring{width:120px;height:120px}
+.hero .ring .big{width:88px;height:88px;font-size:13px}
+.hero .ring .big .ic{font-size:23px}
+.hero h2{font-size:17px}
+.hero p{font-size:12.5px}
+.tile .val{font-size:23px}
+.tile .lbl{font-size:11.5px}
+.tile .lbl svg{width:16px;height:16px}
+
+/* ===== ЗАПОЛНЕНИЕ 2.6 (надёжно) ===== */
+.page.on{min-height:calc(100vh - 178px);min-height:calc(100dvh - 178px);display:flex;flex-direction:column}
+#p-home #liveGrid,#p-live .grid{flex:1 1 auto;grid-auto-rows:1fr}
+#p-home .tile,#p-live .tile{display:flex;flex-direction:column;justify-content:center}
+.page.on > .empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0}
+#p-err #errList:empty + .btn{margin-top:auto}
+#p-car #carInfo:empty ~ .empty{flex:1}
 </style>
 </head>
 <body>
@@ -372,7 +395,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 2.4 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 2.7 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -1484,7 +1507,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.4");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 2.7");};
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
@@ -1507,6 +1530,19 @@ $("shClose").onclick=function(){$("sheet").classList.remove("show");};
 ST.demo = !hasBT ? true : ST.demo;
 $("swDemo").classList.toggle("on",ST.demo);
 $("hsub").textContent= ST.demo?"Демо-режим • OBD-II":"Диагностика по OBD-II";
+/* подгон высоты активной вкладки точно под экран (надёжнее vh/dvh) */
+function fitPage(){
+  var p=document.querySelector(".page.on"); if(!p) return;
+  var tab=document.querySelector(".tabbar");
+  var top=p.getBoundingClientRect().top + (window.pageYOffset||0);
+  var avail=window.innerHeight - top - (tab?tab.offsetHeight:78) - 6;
+  p.style.minHeight = Math.max(300, avail) + "px";
+}
+(function(){ var os=switchTab; switchTab=function(x){ os(x); setTimeout(fitPage,0); }; })();
+window.addEventListener("resize", fitPage);
+window.addEventListener("orientationchange", function(){ setTimeout(fitPage,200); });
+setTimeout(fitPage,0); setTimeout(fitPage,300);
+
 resetLive();
 renderErrors();
 </script>
