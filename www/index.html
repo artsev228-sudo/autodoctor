@@ -322,6 +322,23 @@ svg{display:block}
 .tabbar .t.on[data-tab="set"]{color:#a855f7}
 .tabbar .t.on::after{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-color:rgba(255,255,255,.14)}
 .tabbar .t.on::before{background:currentColor;box-shadow:0 0 8px currentColor}
+/* ===== СПОКОЙНЕЕ — меньше цвета (4.2) ===== */
+.dtc{border-left:3px solid var(--line)}
+.dtc.sev-high{border-left-color:#7a3b3b}
+.dtc.sev-mid{border-left-color:var(--line)}
+.dtc.sev-low{border-left-color:var(--line)}
+.dtc .sev{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+.sev-high .sev{color:#e89595}
+.bhdr{background:var(--card2)!important;border:1px solid var(--line)!important;border-left:3px solid var(--line)!important;box-shadow:none!important;color:var(--soft)!important;font-weight:600!important}
+.bhdr svg{stroke:var(--muted)}
+.bhdr .bcnt{background:var(--card)!important;border:1px solid var(--line)!important;color:var(--muted)!important}
+.bhdr .bcnt.err{color:#e89595!important}
+.dtc .stx{background:var(--card2)!important;color:var(--muted)!important;border-color:var(--line)!important}
+.dtc .stx.act{color:#e89595!important}
+.dtc .stx.pend{color:#cdb074!important}
+.dtc .chev,.glink{color:var(--soft)}
+.glink{border-color:var(--line)}
+.archhdr{background:var(--card2)}
 </style>
 </head>
 <body>
@@ -402,6 +419,14 @@ svg{display:block}
       <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 10-12h-6l1-8Z"/></svg>Напряжение</div><div class="val" id="l-volt">—<span class="unit">В</span></div></div>
       <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v16M4 12h9M16 8l3 2.5V18a1.8 1.8 0 0 1-3.6 0"/></svg>Расход (л/100)</div><div class="val" id="l-fuel">—</div></div>
       <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-2.2 5L8 16l2.2-5z"/></svg>УОЗ</div><div class="val" id="l-adv">—<span class="unit">°</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M3 8h11a2 2 0 1 0-2-2M3 13h15a2 2 0 1 1-2 2"/></svg>Расход воздуха</div><div class="val" id="l-maf">—<span class="unit">г/с</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M3 12h18M7 7l-4 5 4 5M17 7l4 5-4 5"/></svg>Коррекция кратк.</div><div class="val" id="l-stft">—<span class="unit">%</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7"/></svg>Коррекция долг.</div><div class="val" id="l-ltft">—<span class="unit">%</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Давление впуска</div><div class="val" id="l-map">—<span class="unit">кПа</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><path d="M5 3h9a1 1 0 0 1 1 1v16H4V4a1 1 0 0 1 1-1zM4 12h11M18 8l2 1.5V17a1.5 1.5 0 0 1-3 0"/></svg>Уровень топлива</div><div class="val" id="l-flv">—<span class="unit">%</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 12l4-2M12 3v3"/></svg>Давл. рампы</div><div class="val" id="l-rail">—<span class="unit">бар</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2 2"/></svg>Барометр</div><div class="val" id="l-baro">—<span class="unit">кПа</span></div></div>
+      <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19"/></svg>За бортом</div><div class="val" id="l-amb">—<span class="unit">°C</span></div></div>
     </div>
     <div class="spacer"></div>
   </div>
@@ -473,7 +498,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 4.1 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 4.3 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -510,7 +535,7 @@ svg{display:block}
 var ST = {
   connected:false, busy:false, demo:true, connType:"bt",
   device:null, dtcs:[], groups:[], car:{},
-  live:{rpm:0,spd:0,cool:0,load:0,thr:0,volt:0,intk:0,adv:0},
+  live:{rpm:0,spd:0,cool:0,load:0,thr:0,volt:0,intk:0,adv:0,maf:null,stft1:null,ltft1:null,stft2:null,ltft2:null,map:null,fuel:null,baro:null,rail:null,ambient:null},
   settings:{auto:false,vibe:true},
   pollTimer:null, demoTimer:null
 };
@@ -834,16 +859,30 @@ function hexPair(resp, pidHdr){
   return [];
 }
 function readLivePID(pid){ return queue("01"+pid,2000); }
+var pollN=0;
 function pollLiveReal(){
-  readLivePID("0C").then(function(r){var d=hexPair(r,"0C");if(d.length>=2)ST.live.rpm=Math.round((H(d[0])*256+H(d[1]))/4);})
-  .then(function(){return readLivePID("0D");}).then(function(r){var d=hexPair(r,"0D");if(d.length>=1)ST.live.spd=H(d[0]);})
-  .then(function(){return readLivePID("05");}).then(function(r){var d=hexPair(r,"05");if(d.length>=1)ST.live.cool=H(d[0])-40;})
-  .then(function(){return readLivePID("04");}).then(function(r){var d=hexPair(r,"04");if(d.length>=1)ST.live.load=Math.round(H(d[0])*100/255);})
-  .then(function(){return readLivePID("11");}).then(function(r){var d=hexPair(r,"11");if(d.length>=1)ST.live.thr=Math.round(H(d[0])*100/255);})
-  .then(function(){return readLivePID("0F");}).then(function(r){var d=hexPair(r,"0F");if(d.length>=1)ST.live.intk=H(d[0])-40;})
-  .then(function(){return readLivePID("0E");}).then(function(r){var d=hexPair(r,"0E");if(d.length>=1)ST.live.adv=H(d[0])/2-64;})
-  .then(function(){return queue("ATRV",1500);}).then(function(r){var m=(r||"").match(/([0-9]{1,2}\.[0-9])/);if(m)ST.live.volt=parseFloat(m[1]);})
-  .then(function(){ renderLive(); });
+  var L=ST.live;
+  var c=readLivePID("0C").then(function(r){var d=hexPair(r,"0C");if(d.length>=2)L.rpm=Math.round((H(d[0])*256+H(d[1]))/4);})
+  .then(function(){return readLivePID("0D");}).then(function(r){var d=hexPair(r,"0D");if(d.length>=1)L.spd=H(d[0]);})
+  .then(function(){return readLivePID("05");}).then(function(r){var d=hexPair(r,"05");if(d.length>=1)L.cool=H(d[0])-40;})
+  .then(function(){return readLivePID("04");}).then(function(r){var d=hexPair(r,"04");if(d.length>=1)L.load=Math.round(H(d[0])*100/255);})
+  .then(function(){return readLivePID("11");}).then(function(r){var d=hexPair(r,"11");if(d.length>=1)L.thr=Math.round(H(d[0])*100/255);})
+  .then(function(){return queue("ATRV",1500);}).then(function(r){var m=(r||"").match(/([0-9]{1,2}\.[0-9])/);if(m)L.volt=parseFloat(m[1]);});
+  if(pollN%4===0){
+    c=c.then(function(){return readLivePID("0F");}).then(function(r){var d=hexPair(r,"0F");if(d.length>=1)L.intk=H(d[0])-40;})
+    .then(function(){return readLivePID("0E");}).then(function(r){var d=hexPair(r,"0E");if(d.length>=1)L.adv=Math.round(H(d[0])/2-64);})
+    .then(function(){return readLivePID("10");}).then(function(r){var d=hexPair(r,"10");if(d.length>=2)L.maf=+(((H(d[0])*256+H(d[1]))/100).toFixed(1));})
+    .then(function(){return readLivePID("06");}).then(function(r){var d=hexPair(r,"06");if(d.length>=1)L.stft1=Math.round((H(d[0])-128)*100/128);})
+    .then(function(){return readLivePID("07");}).then(function(r){var d=hexPair(r,"07");if(d.length>=1)L.ltft1=Math.round((H(d[0])-128)*100/128);})
+    .then(function(){return readLivePID("08");}).then(function(r){var d=hexPair(r,"08");if(d.length>=1)L.stft2=Math.round((H(d[0])-128)*100/128);})
+    .then(function(){return readLivePID("09");}).then(function(r){var d=hexPair(r,"09");if(d.length>=1)L.ltft2=Math.round((H(d[0])-128)*100/128);})
+    .then(function(){return readLivePID("0B");}).then(function(r){var d=hexPair(r,"0B");if(d.length>=1)L.map=H(d[0]);})
+    .then(function(){return readLivePID("2F");}).then(function(r){var d=hexPair(r,"2F");if(d.length>=1)L.fuel=Math.round(H(d[0])*100/255);})
+    .then(function(){return readLivePID("33");}).then(function(r){var d=hexPair(r,"33");if(d.length>=1)L.baro=H(d[0]);})
+    .then(function(){return readLivePID("23");}).then(function(r){var d=hexPair(r,"23");if(d.length>=2)L.rail=Math.round((H(d[0])*256+H(d[1]))*10/1000);})
+    .then(function(){return readLivePID("46");}).then(function(r){var d=hexPair(r,"46");if(d.length>=1)L.ambient=H(d[0])-40;});
+  }
+  c.then(function(){ renderLive(); pollN++; if(ST.polling){ ST.pollTimer=setTimeout(pollLiveReal,700); } });
 }
 
 /* ===== ДЕМО-РЕЖИМ ===== */
@@ -863,6 +902,10 @@ function demoTick(){
   ST.live.intk=Math.round(28+Math.sin(d.t/15)*4);
   ST.live.volt=+(14.1+Math.sin(d.t/8)*0.3).toFixed(1);
   ST.live.adv=Math.round(8+d.accel*20);
+  ST.live.maf=+(2.5+d.accel*45+Math.random()).toFixed(1);
+  ST.live.stft1=Math.round(Math.sin(d.t/9)*4); ST.live.stft2=ST.live.stft1;
+  ST.live.ltft1=Math.round(-2+Math.sin(d.t/20)*3); ST.live.ltft2=ST.live.ltft1;
+  ST.live.map=Math.round(28+d.accel*62); ST.live.fuel=68; ST.live.baro=100; ST.live.rail=0; ST.live.ambient=18;
   renderLive();
 }
 var DEMO_DTCS=["P0420","P0171","P0300","P0455"];
@@ -1136,9 +1179,9 @@ function disconnect(){
 function startLive(){
   stopLive();
   if(ST.demo){ ST.demoTimer=setInterval(demoTick,500); demoTick(); }
-  else { ST.pollTimer=setInterval(pollLiveReal,1200); pollLiveReal(); }
+  else { ST.polling=true; pollN=0; pollLiveReal(); }
 }
-function stopLive(){ clearInterval(ST.demoTimer); clearInterval(ST.pollTimer); ST.demoTimer=ST.pollTimer=null; }
+function stopLive(){ ST.polling=false; clearInterval(ST.demoTimer); clearTimeout(ST.pollTimer); ST.demoTimer=ST.pollTimer=null; }
 function resetLive(){ for(var k in ST.live) ST.live[k]=0; renderLive(); }
 
 function doScan(){
@@ -1211,6 +1254,8 @@ function renderLive(){
   set("l-load",L.load,"%"); set("l-thr",L.thr,"%"); set("l-intk",L.intk,"°C");
   set("l-volt",L.volt?L.volt.toFixed(1):0,"В"); set("l-adv",L.adv,"°");
   set("l-fuel", L.spd>3?(+(L.load*0.12+2).toFixed(1)):"—","");
+  set("l-maf",L.maf," г/с"); set("l-stft",L.stft1!=null?(L.stft1>0?"+"+L.stft1:L.stft1):null,"%"); set("l-ltft",L.ltft1!=null?(L.ltft1>0?"+"+L.ltft1:L.ltft1):null,"%");
+  set("l-map",L.map," кПа"); set("l-flv",L.fuel,"%"); set("l-rail",L.rail," бар"); set("l-baro",L.baro," кПа"); set("l-amb",L.ambient,"°C");
   bar("lb-rpm",L.rpm/70);
 }
 function renderErrors(){
@@ -1259,6 +1304,18 @@ function isPremium(){ return lsGet("premium","1")==="1"; }
 function aiFreeLeft(){ var d=(new Date()).toISOString().slice(0,10); if(lsGet("ai_day","")!==d) return 3; return Math.max(0,3-parseInt(lsGet("ai_cnt","0"),10)); }
 function aiConsume(){ var d=(new Date()).toISOString().slice(0,10); if(lsGet("ai_day","")!==d){ lsSet("ai_day",d); lsSet("ai_cnt","1"); } else lsSet("ai_cnt",String(parseInt(lsGet("ai_cnt","0"),10)+1)); }
 function buildAiPrompt(code){ var car=brandHint(); return "Ты опытный автодиагност. Объясни простым русским языком ошибку OBD-II "+code+(car?(" для автомобиля "+car):"")+". Дай: что значит (1-2 предложения), вероятные причины (маркированным списком через дефис), что делать в первую очередь, насколько срочно. Используй короткие абзацы и **жирный** для заголовков пунктов. Коротко, по делу, без воды и дисклеймеров."; }
+function aiParams(L){
+  var p=["обороты "+L.rpm,"скорость "+L.spd+" км/ч","темп.ОЖ "+L.cool+"°C","нагрузка "+L.load+"%","дроссель "+L.thr+"%","напряжение "+(L.volt||0)+"В"];
+  if(L.intk!=null)p.push("впуск "+L.intk+"°C");
+  if(L.maf!=null)p.push("MAF "+L.maf+" г/с");
+  if(L.stft1!=null)p.push("коррекция топлива кратк. "+L.stft1+"%");
+  if(L.ltft1!=null)p.push("коррекция топлива долг. "+L.ltft1+"%");
+  if(L.map!=null)p.push("давление впуска "+L.map+" кПа");
+  if(L.fuel!=null)p.push("уровень топлива "+L.fuel+"%");
+  if(L.rail!=null&&L.rail>0)p.push("давление рампы "+L.rail+" бар");
+  if(L.ambient!=null)p.push("за бортом "+L.ambient+"°C");
+  return p.join(", ");
+}
 function aiDiagnose(){
   if(!ST.connected){ toast("Сначала подключитесь и сделайте скан"); switchTab("home"); return; }
   var btn=$("aiDiagBtn"); var old=btn.textContent; btn.disabled=true; btn.textContent="🤖 Анализирую…";
@@ -1268,7 +1325,7 @@ function aiDiagnose(){
   var prompt="Ты опытный автодиагност. Проанализируй состояние автомобиля по данным OBD-II и дай заключение.\n\n"+
     "Машина: "+(car||"неизвестна")+(vin?(" (VIN "+vin+")"):"")+".\n"+
     "Коды: "+(codes.length?codes.join("; "):"не найдены")+".\n"+
-    "Параметры сейчас: обороты "+L.rpm+", скорость "+L.spd+", темп.ОЖ "+L.cool+"°C, нагрузка "+L.load+"%, дроссель "+L.thr+"%, напряжение "+(L.volt||0)+"В, впуск "+L.intk+"°C.\n\n"+
+    "Параметры сейчас: "+aiParams(L)+".\n\n"+
     "Ответь строго в формате:\nКРИТИЧНОСТЬ: ЗЕЛЁНЫЙ или ЖЁЛТЫЙ или КРАСНЫЙ — короткое пояснение одной строкой.\n\n**Что происходит:**\nпростым языком 2-4 предложения — что реально с машиной, какой код причина, а какой следствие; если кодов нет — оцени по параметрам ранние признаки.\n\n**Что делать:**\nкраткий план и насколько срочно. Без воды и дисклеймеров.";
   var cfg=aiConfig(); var h={"Content-Type":"application/json"}; if(cfg.key) h["Authorization"]="Bearer "+cfg.key;
   fetch(cfg.url,{method:"POST",headers:h,body:JSON.stringify({model:cfg.model,messages:[{role:"user",content:prompt}],temperature:0.3})})
@@ -1283,9 +1340,10 @@ function renderDiag(text){
   var box=$("aiDiagResult"); box.innerHTML="";
   var crit="yellow", cl="ОСТОРОЖНО";
   if(/красн/i.test(text)){ crit="red"; cl="СРОЧНО"; } else if(/зел[ёе]н/i.test(text)){ crit="green"; cl="В НОРМЕ"; }
-  var m=text.match(/критичность[^\n]*?[:\-—]\s*([^\n]*)/i);
-  var critLine=((m&&m[1])||"").replace(/^(зел[ёе]ный|ж[ёе]лтый|красный)[\s—\-:()]*/i,"").trim();
-  var body=text.replace(/[\s\S]*?критичность[^\n]*\n?/i,"").trim();
+  var lines=text.split("\n"); var ci=-1;
+  for(var i=0;i<lines.length;i++){ if(/критичность/i.test(lines[i])){ ci=i; break; } }
+  var critLine = ci>=0 ? lines[ci].replace(/.*?критичность[^:—\-]*[:—\-]\s*/i,"").replace(/^(зел[ёе]ный|ж[ёе]лтый|красный)[\s—\-:()]*/i,"").trim() : "";
+  var body = (ci>=0 ? lines.slice(ci+1).join("\n") : text).replace(/^\s+/,"").trim();
   var bar=document.createElement("div"); bar.className="critbar "+crit;
   var ct=document.createElement("div"); ct.className="ct"; var dot=document.createElement("span"); dot.className="cdot"; ct.appendChild(dot); ct.appendChild(document.createTextNode("КРИТИЧНОСТЬ: "+cl));
   var cld=document.createElement("div"); cld.className="cl"; cld.textContent=critLine||"См. разбор ниже.";
@@ -1682,7 +1740,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 4.1");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 4.3");};
 $("aiSetup").onclick=openAiSetup;
 updateAiStatus();
 $("diagOpen").onclick=openDiag;
