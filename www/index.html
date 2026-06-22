@@ -167,6 +167,11 @@ svg{display:block}
 .search input:focus{border-color:var(--accent)}
 .search .sb{background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:#fff;font-weight:700;font-size:14px;padding:0 16px;border-radius:12px;flex:0 0 auto;box-shadow:0 4px 14px rgba(59,130,246,.4)}
 .hint{font-size:11.5px;color:var(--muted);margin:-6px 2px 12px;line-height:1.4}
+.csearch{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:2px 14px;box-shadow:var(--sh)}
+.csearch-h{display:flex;align-items:center;gap:9px;padding:13px 0;font-size:13.5px;font-weight:600;color:var(--soft);cursor:pointer}
+.csearch-h svg{width:17px;height:17px;stroke:var(--accent2);fill:none;stroke-width:2;flex:0 0 auto}
+.csearch-h .chev2{margin-left:auto;color:var(--accent2);font-size:14px}
+#codeSearchBox{padding-bottom:8px}
 
 .vin{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:var(--sh)}
 .vin .vh{display:flex;align-items:center;gap:9px;margin-bottom:6px}
@@ -350,18 +355,25 @@ svg{display:block}
 
   <!-- ERRORS -->
   <div class="page" id="p-err">
-    <div class="stitle"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> Поиск по коду ошибки</div>
-    <div class="search">
-      <input id="codeInput" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters"
-        spellcheck="false" placeholder="Например, P0420" maxlength="7">
-      <button class="sb" id="codeBtn">Найти</button>
-    </div>
-    <div class="hint">Введите код вида P0171, C0035, B1318 или U0100 — покажем расшифровку, причины и примерную цену. В базе более 80 кодов.</div>
-    <div id="codeResult"></div>
     <div class="stitle"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg> Найденные ошибки <span class="cnt" id="errCnt"></span></div>
     <div id="errList"></div>
     <button class="btn danger" id="clearBtn" style="display:none">🧹 Сбросить ошибки</button>
     <button class="btn ghost" id="exportBtn" style="margin-top:8px">📄 Экспорт отчёта (PDF)</button>
+    <div class="csearch">
+      <div class="csearch-h" id="codeSearchToggle">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span>Поиск по коду вручную</span><span class="chev2" id="codeChev">▾</span>
+      </div>
+      <div id="codeSearchBox" style="display:none">
+        <div class="search" style="margin-top:4px">
+          <input id="codeInput" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters"
+            spellcheck="false" placeholder="Например, P0420" maxlength="7">
+          <button class="sb" id="codeBtn">Найти</button>
+        </div>
+        <div class="hint">Код вида P0171, C0035, B1318 или U0100 — покажем расшифровку, причины и цену.</div>
+        <div id="codeResult"></div>
+      </div>
+    </div>
     <div class="spacer"></div>
   </div>
 
@@ -449,7 +461,7 @@ svg{display:block}
       </div>
       <div class="it" id="aboutApp">
         <div class="ic"><svg viewBox="0 0 24 24" style="stroke:#38bdf8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></div>
-        <div class="tx"><b>О приложении</b><span>Версия 3.8 • MVP</span></div>
+        <div class="tx"><b>О приложении</b><span>Версия 4.0 • MVP</span></div>
       </div>
     </div>
     <div class="adslot">Место для рекламы</div>
@@ -1262,8 +1274,9 @@ function aiExplain(code, btn){
      var d=document.createElement("div"); d.className="airep";
      d.innerHTML='<div class="aih">🤖 Разбор нейросети</div><div class="aitext"></div>';
      d.querySelector(".aitext").innerHTML=mdToHtml(text);
-     blk.parentNode.appendChild(d);
-     blk.parentNode.style.maxHeight="none";
+     var card=blk.parentNode.parentNode;   // .dtc — наружу из overflow:hidden
+     d.style.margin="0 14px 14px";
+     card.appendChild(d);
      if(!isPremium()) aiConsume();
      updateAiStatus();
    })
@@ -1623,12 +1636,13 @@ Array.prototype.forEach.call(document.querySelectorAll("#segConn button"),functi
     toast(ST.connType==="wifi"?"Тип адаптера: Wi-Fi":"Тип адаптера: Bluetooth");
   };
 });
-$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 3.8");};
+$("aboutApp").onclick=function(){toast("АвтоДоктор • MVP 4.0");};
 $("aiSetup").onclick=openAiSetup;
 updateAiStatus();
 $("diagOpen").onclick=openDiag;
 
 /* поиск по коду ошибки */
+$("codeSearchToggle").onclick=function(){ var b=$("codeSearchBox"); var op=b.style.display!=="none"; b.style.display=op?"none":"block"; $("codeChev").textContent=op?"▾":"▴"; };
 $("codeBtn").onclick=searchCode;
 $("codeInput").addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); searchCode(); } });
 $("codeInput").addEventListener("input",function(){ if(!this.value.trim()) $("codeResult").innerHTML=""; });
